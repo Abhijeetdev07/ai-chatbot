@@ -1,10 +1,10 @@
-# Multilingual AI Chatbot — Project Documentation
+# AI Chatbot — Project Documentation
 
 ## 1. Project Overview
 
-**Project Name:** Multilingual AI Chatbot  
+**Project Name:** AI Chatbot  
 **Type:** Full-Stack Web Application  
-**Description:** A locally-hosted, intelligent chatbot powered by Ollama LLMs. Users can register, log in, and have natural-language conversations with an AI assistant. The application stores all conversations in a MongoDB database and supports voice input via the browser's Web Speech API. The chatbot can be extended to support multiple languages.
+**Description:** A locally-hosted, intelligent chatbot powered by Ollama LLMs. Users can register, log in, and have natural-language conversations with an AI assistant. Conversations are stored in MongoDB and are isolated per user. The chat supports real-time streaming responses (typing effect) using Server-Sent Events (SSE). Optional image input is supported in the API payload (base64).
 
 ---
 
@@ -15,7 +15,7 @@
 | **LLM (AI)** | [Ollama](https://ollama.com) — runs models locally (e.g. `tinyllama`, `llama3.2`) |
 | **Backend** | Python 3.11 + [FastAPI](https://fastapi.tiangolo.com) |
 | **Database** | [MongoDB](https://www.mongodb.com) via Motor (async driver) |
-| **Frontend** | React 18 + [Vite](https://vitejs.dev) |
+| **Frontend** | React 19 + [Vite](https://vitejs.dev) |
 | **Styling** | [Tailwind CSS v4](https://tailwindcss.com) |
 | **Auth** | JWT (python-jose) + bcrypt (passlib) |
 | **Icons** | [react-icons](https://react-icons.github.io/react-icons/) |
@@ -52,11 +52,11 @@ chatbot/
         ├── api/
         │   ├── authApi.js          # register(), login(), getMe()
         │   ├── axiosConfig.js      # Global Bearer token interceptor
-        │   └── chatApi.js          # sendMessage(), getHistory(), listConversations()
+        │   ├── chatApi.js          # sendMessage(), streamMessage(), getHistory(), listConversations()
         ├── components/
         │   ├── ChatWindow.jsx      # Scrollable message feed + typing indicator
         │   ├── MessageBubble.jsx   # User vs AI message bubbles
-        │   ├── MessageInput.jsx    # Textarea + Send + 🎤 Voice input
+        │   ├── MessageInput.jsx    # Textarea + Send
         │   ├── ProtectedRoute.jsx  # Auth guard (redirect to /login)
         │   └── Sidebar.jsx         # Conversation list + profile menu
         ├── context/
@@ -112,16 +112,22 @@ JWT_EXPIRE_HOURS=24
 
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/api/chat` | Send message, get AI reply |
+| POST | `/api/chat` | Send message, get AI reply (JSON or SSE stream) |
+
+**Auth:** ✅ Bearer
 
 **Request:**
 ```json
-{ "conversation_id": null, "message": "Hello!", "stream": false }
+{ "conversation_id": null, "message": "Hello!", "stream": true, "images": ["<base64>"] }
 ```
-**Response:**
+**Non-stream Response (when `stream=false`):**
 ```json
 { "conversation_id": "6789abc...", "reply": "Hi! How can I help?" }
 ```
+
+**Streaming Response (when `stream=true`):**
+- `text/event-stream` (SSE)
+- Events: `meta` (contains `conversation_id`), `token` (partial output), `done`
 
 ---
 
@@ -132,6 +138,8 @@ JWT_EXPIRE_HOURS=24
 | GET | `/api/conversations` | List all conversations |
 | GET | `/api/history/{id}` | Get full message history |
 | DELETE | `/api/conversations/{id}` | Delete a conversation |
+
+**Auth:** ✅ Bearer (all history endpoints)
 
 ---
 
@@ -152,9 +160,10 @@ JWT_EXPIRE_HOURS=24
 ```json
 {
   "_id": "ObjectId",
+  "user_id": "<user ObjectId as string>",
   "title": "First 30 chars of first message...",
   "messages": [
-    { "role": "user",      "content": "Hello!",         "timestamp": "..." },
+    { "role": "user",      "content": "Hello!",         "timestamp": "...", "images": ["<base64>"] },
     { "role": "assistant", "content": "Hi! How can...", "timestamp": "..." }
   ],
   "created_at": "2026-02-25T20:00:00Z",
@@ -174,9 +183,10 @@ JWT_EXPIRE_HOURS=24
 | Multi-user chat isolation | ✅ |
 | Conversation history (MongoDB) | ✅ |
 | Sidebar with conversation list | ✅ |
-| Profile menu with logout | ✅ |
+| Logout | ✅ |
 | AI chat (Ollama local LLM) | ✅ |
-| Voice input (Web Speech API) | ✅ |
+| Real-time streaming responses (SSE) | ✅ |
+| Image input (base64 payload support) | ✅ |
 | Mobile responsive UI | ✅ |
 | Dark mode design | ✅ |
 | Auto-scroll + typing indicator | ✅ |
@@ -221,43 +231,61 @@ Open **http://localhost:5173** in your browser.
 
 ---
 
-## 9. Multilingual Support
+## 9. Streaming Responses (Typing Effect)
 
-The chatbot can respond in the user's language by modifying the **system prompt** in `services/ollama_service.py`.
+The chat UI uses Server-Sent Events (SSE) to show AI output incrementally (token-by-token).
 
-**Example — auto-detect and respond in user's language:**
-```python
-SYSTEM_PROMPT = """You are a helpful multilingual AI assistant.
-Detect the language of the user's message and always respond in the same language."""
-```
+- Frontend: reads `text/event-stream` and appends tokens in real time
+- Backend: emits SSE events `meta`, `token`, and `done`
 
-**Available Ollama models with strong multilingual support:**
-| Model | Languages | RAM Required |
-|---|---|---|
-| `tinyllama` | English (basic others) | ~637 MB |
-| `llama3.2` | 8+ languages | ~2 GB |
-| `mistral` | 10+ languages | ~4 GB |
-| `aya` | 23 languages | ~4 GB |
+This makes responses feel faster because you don't need to wait for the full reply.
 
 ---
 
-## 10. Known Issues & Fixes
+## 10. Image Input (API)
+
+The chat API supports optional image input via base64 in the request body:
+
+```json
+{
+  "conversation_id": null,
+  "message": "Describe this image",
+  "images": ["<base64>"]
+}
+```
+
+Note: The frontend UI for selecting/uploading images can be added as an enhancement (the backend payload format is already supported).
+
+---
+
+## 11. Screenshots
+
+Add your screenshots to a folder like `screenshots/` and link them here.
+
+Example:
+
+```md
+![Login](screenshots/login.png)
+![Chat](screenshots/chat.png)
+```
+
+---
+
+## 12. Known Issues & Fixes
 
 | Issue | Fix |
 |---|---|
 | `bcrypt` 5.x incompatible with `passlib` | Downgraded to `bcrypt==4.0.1` |
 | `phi3:mini` causes OOM (Out of Memory) | Switch to `tinyllama` in `.env` |
-| Voice input not working in Firefox | Use Chrome or Edge (Web Speech API) |
 | CORS errors in development | Vite proxy configured: `/api` → `localhost:8000` |
 
 ---
 
-## 11. Future Enhancements
+## 13. Future Enhancements
 
-- [ ] Streaming AI responses (SSE/word-by-word)
-- [ ] Image upload + vision model (e.g. `llava`)
+- [ ] Image upload UI (file picker) + vision model (e.g. `llava`)
 - [ ] Markdown rendering for code blocks
 - [ ] Model selector dropdown (switch LLMs in UI)
 - [ ] Dark/Light theme toggle
 - [ ] Export conversation as PDF/text
-- [ ] Per-user conversation isolation (link conversations to user ID)
+- [ ] Admin dashboard / usage analytics
