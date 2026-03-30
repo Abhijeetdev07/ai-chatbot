@@ -12,7 +12,7 @@
 
 | Layer | Technology |
 |---|---|
-| **LLM (AI)** | [Ollama](https://ollama.com) — runs models locally (e.g. `tinyllama`, `llama3.2`) |
+| **LLM (AI)** | [Ollama](https://ollama.com) — runs models locally (e.g. `phi 3:mini`, `llama3.2`) |
 | **Backend** | Python 3.11 + [FastAPI](https://fastapi.tiangolo.com) |
 | **Database** | [MongoDB](https://www.mongodb.com) via Motor (async driver) |
 | **Frontend** | React 19 + [Vite](https://vitejs.dev) |
@@ -79,7 +79,7 @@ chatbot/
 MONGO_URI=mongodb://localhost:27017
 DB_NAME=chatbot_db
 OLLAMA_BASE_URL=http://localhost:11434
-MODEL_NAME=tinyllama
+MODEL_NAME=phi 3:mini
 CORS_ORIGINS=http://localhost:5173
 JWT_SECRET=your_long_random_secret_key
 JWT_EXPIRE_HOURS=24
@@ -209,7 +209,7 @@ mongod
 ### Step 2 — Start Ollama
 ```bash
 ollama serve
-ollama pull tinyllama   # first time only
+ollama pull phi 3:mini   # first time only
 ```
 
 ### Step 3 — Start Backend
@@ -276,7 +276,7 @@ Example:
 | Issue | Fix |
 |---|---|
 | `bcrypt` 5.x incompatible with `passlib` | Downgraded to `bcrypt==4.0.1` |
-| `phi3:mini` causes OOM (Out of Memory) | Switch to `tinyllama` in `.env` |
+| `phi3:mini` causes OOM (Out of Memory) | Switch to `phi 3:mini` in `.env` |
 | CORS errors in development | Vite proxy configured: `/api` → `localhost:8000` |
 
 ---
